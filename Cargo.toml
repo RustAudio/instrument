@@ -1,0 +1,12 @@
+[package]
+name = "instrument"
+version = "0.1.0"
+authors = ["mitchmindtree <mitchell.nordine@gmail.com>"]
+
+[dependencies]
+mindtree_utils = "0.3.0"
+panning = "0.1.1"
+pitch_calc = "0.10.0"
+rand = "0.3.4"
+simple_gaussian = "0.4.4"
+time_calc = "0.10.1"
