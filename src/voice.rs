@@ -101,4 +101,3 @@ impl<NF> Voice<NF> {
     }
 
 }
-

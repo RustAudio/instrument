@@ -40,6 +40,31 @@ pub struct Instrument<M, NFG>
     pub is_paused: bool,
 }
 
+// pub struct Input<M, NFG, NV, D, A, R>
+//     where M: Iterator,
+//           M::Item: Mode,
+//           NFG: Iterator,
+//           NFG::Item: NoteFreqGenerator,
+//           NV: Iterator<Item=usize>,
+//           D: Iterator<Item=f32>,
+//           A: Iterator<Item=time::Ms>,
+//           R: Iterator<Item=time::Ms>,
+// {
+//     mode: M,
+//     note_freq_gen: NFG,
+//     num_voices: NV,
+//     detune: D,
+//     attack: A,
+//     release: R,
+// }
+
+/// An iterator that endlessly yields the next `FramePerVoice` for an `Instrument`.
+pub struct Frames<'a, NF: 'a> {
+    attack: u64,
+    release: u64,
+    voices: &'a mut [Voice<NF>],
+}
+
 /// Yields the amplitude and frequency of each voice for a single frame.
 pub struct FramePerVoice<'a, NF: 'a> {
     attack: u64,
@@ -72,21 +97,28 @@ impl<M, NFG> Instrument<M, NFG>
     }
 
     /// Set the note fades for the `Instrument` in frames.
-    pub fn fade(mut self, attack: time::Ms, release: time::Ms) -> Self {
-        self.attack_ms = attack;
-        self.release_ms = release;
+    pub fn fade<A, R>(mut self, attack: A, release: R) -> Self
+        where A: Into<time::Ms>,
+              R: Into<time::Ms>,
+    {
+        self.attack_ms = attack.into();
+        self.release_ms = release.into();
         self
     }
 
     /// Set the attack.
-    pub fn attack(mut self, attack: time::Ms) -> Self {
-        self.attack_ms = attack;
+    pub fn attack<A>(mut self, attack: A) -> Self
+        where A: Into<time::Ms>,
+    {
+        self.attack_ms = attack.into();
         self
     }
 
     /// Set the release.
-    pub fn release(mut self, release: time::Ms) -> Self {
-        self.release_ms = release;
+    pub fn release<R>(mut self, release: R) -> Self
+        where R: Into<time::Ms>,
+    {
+        self.release_ms = release.into();
         self
     }
 
@@ -171,10 +203,21 @@ impl<M, NFG> Instrument<M, NFG>
         }
     }
 
+    /// Provides an `Iterator` like type that consecutively yields the `next_frame_per_voice` for
+    /// the given `sample_hz`.
+    #[inline]
+    pub fn frames(&mut self, sample_hz: time::SampleHz) -> Frames<NFG::NoteFreq> {
+        Frames {
+            attack: self.attack_ms.samples(sample_hz) as u64,
+            release: self.release_ms.samples(sample_hz) as u64,
+            voices: &mut self.voices,
+        }
+    }
+
     /// Produces an Iterator that yields the amplitude and frequency of each voice for the next
     /// frame.
     #[inline]
-    pub fn frams_per_voice(&mut self, sample_hz: time::SampleHz) -> FramePerVoice<NFG::NoteFreq> {
+    pub fn frame_per_voice(&mut self, sample_hz: time::SampleHz) -> FramePerVoice<NFG::NoteFreq> {
         FramePerVoice {
             attack: self.attack_ms.samples(sample_hz) as u64,
             release: self.release_ms.samples(sample_hz) as u64,
@@ -185,8 +228,28 @@ impl<M, NFG> Instrument<M, NFG>
 }
 
 
-///// Iterators
+///// Iterator implementations.
 
+
+impl<'a, NF> Frames<'a, NF>
+    where NF: NoteFreq,
+{
+    /// Counts the number of `Voice`s that are currently playing a note.
+    #[inline]
+    pub fn num_active_voices(&self) -> usize {
+        self.voices.iter().filter(|v| v.note.is_some()).count()
+    }
+
+    /// Yields the next `FramePerVoice` for the `Instrument`.
+    #[inline]
+    pub fn next_frame_per_voice(&mut self) -> FramePerVoice<NF> {
+        FramePerVoice {
+            attack: self.attack,
+            release: self.release,
+            voices: self.voices.iter_mut(),
+        }
+    }
+}
 
 impl<'a, NF> FramePerVoice<'a, NF>
     where NF: NoteFreq,

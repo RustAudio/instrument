@@ -2,7 +2,7 @@ use note_freq::NoteFreqGenerator;
 use unit::{NoteHz, NoteVelocity};
 use voice::{NoteState, Voice};
 
-/// The "mode" with which the Synth will handle notes.
+/// The "mode" with which the `Instrument` will handle notes.
 ///
 /// The `Mode` manages several areas of logic:
 ///
@@ -120,6 +120,9 @@ impl Mode for Mono {
                     voices: &mut [Voice<NFG::NoteFreq>])
         where NFG: NoteFreqGenerator,
     {
+        // To ensure that we don't double-stack notes when multiple `note_on`s are given for the
+        // same note, we first release the note if it exists.
+        self.note_off(note_hz, detune, note_freq_gen, voices);
 
         let Mono(kind, ref mut notes) = *self;
 
