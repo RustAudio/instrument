@@ -2,6 +2,12 @@
 name = "instrument"
 version = "0.1.0"
 authors = ["mitchmindtree <mitchell.nordine@gmail.com>"]
+description = "A foundational type for performable musical instruments. Converts discrete note events to a continuous signal of amplitude and frequency over N number of voices. Useful for instruments such as synthesizers or samplers."
+readme = "README.md"
+keywords = ["synthesis", "dsp", "audio", "music", "instrument"]
+license = "MIT"
+repository = "https://github.com/RustAudio/instrument.git"
+homepage = "https://github.com/RustAudio/instrument"
 
 [dependencies]
 pitch_calc = "0.11.0"
