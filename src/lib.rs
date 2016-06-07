@@ -2,12 +2,9 @@
 //!
 //! See the [**Instrument**](./struct.Instrument.html) type.
 
-extern crate gaussian;
-extern crate panning;
 extern crate pitch_calc as pitch;
 extern crate rand;
 extern crate time_calc as time;
-extern crate utils;
 
 pub use instrument::{Frames, Instrument};
 pub use mode::Mode;
@@ -19,3 +16,6 @@ pub mod mode;
 pub mod note_freq;
 pub mod unit;
 mod voice;
+
+#[cfg(feature="serde_serialization")]
+mod serde;

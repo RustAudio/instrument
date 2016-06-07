@@ -29,28 +29,28 @@ pub trait NoteFreq: Clone + std::fmt::Debug {
 
 
 /// A PortamentoNote generator that applies a glissando for the given number of samples.
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, PartialEq)]
 pub struct Portamento(pub time::calc::Samples);
 
 /// A note that interpolates between to given frequencies over the given duration.
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, PartialEq)]
 pub struct PortamentoFreq {
-    current_sample: time::calc::Samples,
-    target_samples: time::calc::Samples,
-    start_mel: pitch::calc::Mel,
-    target_mel: pitch::calc::Mel,
+    pub current_sample: time::calc::Samples,
+    pub target_samples: time::calc::Samples,
+    pub start_mel: pitch::calc::Mel,
+    pub target_mel: pitch::calc::Mel,
 }
 
 
 /// A wrapper for switching between NoteFreqGenerators at runtime.
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, PartialEq)]
 pub enum DynamicGenerator {
     Portamento(Portamento),
     Constant,
 }
 
 /// A warpper for switching between different NoteFreqs at runtime.
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, PartialEq)]
 pub enum Dynamic {
     Portamento(PortamentoFreq),
     Constant(pitch::calc::Hz),

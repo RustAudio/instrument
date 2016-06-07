@@ -35,11 +35,11 @@ pub trait Mode {
 
 
 /// Monophonic playback.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct Mono(pub MonoKind, pub Vec<NoteHz>);
 
 /// The state of monophony.
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, PartialEq)]
 pub enum MonoKind {
     /// New notes will reset the voice's playheads
     Retrigger,
@@ -51,11 +51,11 @@ pub enum MonoKind {
 }
 
 /// Polyphonic playback.
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, PartialEq)]
 pub struct Poly;
 
 /// The mode in which the Synth will handle notes.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub enum Dynamic {
     /// Single voice (normal or legato) with a stack of fallback notes.
     Mono(Mono),

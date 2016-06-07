@@ -2,7 +2,7 @@ use note_freq::NoteFreq;
 use unit::{NoteHz, NoteVelocity, Playhead};
 
 /// A single Voice. A Synth may consist of any number of Voices.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct Voice<NF> {
     /// Data for a note, if there is one currently being played.
     ///
@@ -13,7 +13,7 @@ pub struct Voice<NF> {
 }
 
 /// The current state of the Voice's note playback.
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, PartialEq)]
 pub enum NoteState {
     /// The note is current playing.
     Playing,

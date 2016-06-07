@@ -18,7 +18,7 @@ use unit::{NoteHz, NoteVelocity};
 /// - Note on "interoplation" / frequency generation: Legato or Constant.
 /// - Sustained note warping: 
 /// - Multi-channel audio processing.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct Instrument<M, NFG>
     where NFG: NoteFreqGenerator,
 {
@@ -36,27 +36,7 @@ pub struct Instrument<M, NFG>
     pub attack_ms: time::Ms,
     /// A duration in frames over which the amplitude of each note will fade out after `note_off`.
     pub release_ms: time::Ms,
-    /// Is the playback currently paused?
-    pub is_paused: bool,
 }
-
-// pub struct Input<M, NFG, NV, D, A, R>
-//     where M: Iterator,
-//           M::Item: Mode,
-//           NFG: Iterator,
-//           NFG::Item: NoteFreqGenerator,
-//           NV: Iterator<Item=usize>,
-//           D: Iterator<Item=f32>,
-//           A: Iterator<Item=time::Ms>,
-//           R: Iterator<Item=time::Ms>,
-// {
-//     mode: M,
-//     note_freq_gen: NFG,
-//     num_voices: NV,
-//     detune: D,
-//     attack: A,
-//     release: R,
-// }
 
 /// An iterator that endlessly yields the next `FramePerVoice` for an `Instrument`.
 pub struct Frames<'a, NF: 'a> {
@@ -86,7 +66,6 @@ impl<M, NFG> Instrument<M, NFG>
             note_freq_gen: note_freq_gen,
             attack_ms: time::Ms(0.0),
             release_ms: time::Ms(0.0),
-            is_paused: false,
         }
     }
 
@@ -153,7 +132,6 @@ impl<M, NFG> Instrument<M, NFG>
 
     /// Return whether or not there are any currently active voices.
     pub fn is_active(&self) -> bool {
-        if self.is_paused { return false }
         self.voices.iter().any(|voice| voice.note.is_some())
     }
 
@@ -178,18 +156,6 @@ impl<M, NFG> Instrument<M, NFG>
     {
         let Instrument { detune, ref note_freq_gen,  ref mut mode, ref mut voices, .. } = *self;
         mode.note_off(note_hz.into().hz(), detune, note_freq_gen, voices);
-    }
-
-    /// Pause playback.
-    #[inline]
-    pub fn pause(&mut self) {
-        self.is_paused = true;
-    }
-
-    /// Unpause playback.
-    #[inline]
-    pub fn unpause(&mut self) {
-        self.is_paused = false;
     }
 
     /// Stop playback and clear the current notes.
@@ -226,9 +192,6 @@ impl<M, NFG> Instrument<M, NFG>
     }
 
 }
-
-
-///// Iterator implementations.
 
 
 impl<'a, NF> Frames<'a, NF>
