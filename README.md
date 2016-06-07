@@ -12,4 +12,4 @@ Note-on effects such as detuning and legato are also supported.
 
 The `instrument` crate is used by:
 - [synth](https://github.com/RustAudio/synth)
-- [sampler]()
+- [sampler](https://github.com/RustAudio/sampler)
