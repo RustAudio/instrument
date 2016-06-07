@@ -6,9 +6,9 @@ The `Instrument` type takes discrete `note_on` and `note_off` events as inputs
 and returns a `Frames` iterator yielding a amplitude/frequency value pair per
 `Voice` per `Frame` as an output.
 
-`Instrument` supports multiple note handling `Mode`s including *n* voice
-`Poly`phony and *n* voice unison `Mono`phony (both `Retrigger` and `Legato`).
-Note on effects such as detuning and legato are also supported.
+`Instrument` supports multiple note handling `Mode`s including **n** voice
+polyphony and **n** voice unison monophony (both retrigger and legato).
+Note-on effects such as detuning and legato are also supported.
 
 The `instrument` crate is used by:
 - [synth](https://github.com/RustAudio/synth)
