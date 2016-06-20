@@ -1,6 +1,6 @@
 [package]
 name = "instrument"
-version = "0.1.0"
+version = "0.2.0"
 authors = ["mitchmindtree <mitchell.nordine@gmail.com>"]
 description = "A foundational type for performable musical instruments. Converts discrete note events to a continuous signal of amplitude and frequency over N number of voices. Useful for instruments such as synthesizers or samplers."
 readme = "README.md"
