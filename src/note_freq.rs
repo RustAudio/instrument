@@ -124,7 +124,7 @@ impl NoteFreqGenerator for Portamento {
         // If some note is already playing, take it to use for portamento.
         let maybe_last_hz = match maybe_voice {
             Some(voice) => match voice.note.as_ref() {
-                Some(&(NoteState::Playing, _, ref porta_freq, _)) => Some(porta_freq.hz()),
+                Some(note) if note.state == NoteState::Playing => Some(note.freq.hz()),
                 _ => None,
             },
             None => None,
@@ -167,7 +167,7 @@ impl NoteFreqGenerator for DynamicGenerator {
                 // If some note is already playing, take it to use for portamento.
                 let maybe_last_hz = match maybe_voice {
                     Some(voice) => match voice.note.as_ref() {
-                        Some(&(NoteState::Playing, _, ref porta_freq, _)) => Some(porta_freq.hz()),
+                        Some(note) if note.state == NoteState::Playing => Some(note.freq.hz()),
                         _ => None,
                     },
                     None => None,

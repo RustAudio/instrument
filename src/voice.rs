@@ -1,4 +1,5 @@
 use note_freq::NoteFreq;
+use std;
 use unit::{NoteHz, NoteVelocity, Playhead};
 
 /// A single Voice. A Synth may consist of any number of Voices.
@@ -7,9 +8,24 @@ pub struct Voice<NF> {
     /// Data for a note, if there is one currently being played.
     ///
     /// `Playhead` represents the number of frames played since `note` became `Some`.
-    pub note: Option<(NoteState, NoteHz, NF, NoteVelocity)>,
+    pub note: Option<Note<NF>>,
     /// Number of frames played since the beginning of the note.
     pub playhead: Playhead,
+}
+
+/// Represents an active `Note`, currently being performed by the `Voice`.
+#[derive(Clone, Debug, PartialEq)]
+pub struct Note<NF> {
+    /// The current state of the `Note` (`Playing` or `Released`).
+    pub state: NoteState,
+    /// The note frequency produced by the note frequency generator.
+    pub freq: NF,
+    /// The hz of the `note_on` event.
+    pub hz: NoteHz,
+    /// The velocity of the `note_on` event.
+    pub vel: NoteVelocity,
+    /// The time at which the `Note` was constructed.
+    pub time_of_note_on: std::time::Instant,
 }
 
 /// The current state of the Voice's note playback.
@@ -41,14 +57,20 @@ impl<NF> Voice<NF> {
     /// Trigger playback with the given note, resetting all playheads.
     #[inline]
     pub fn note_on(&mut self, hz: NoteHz, freq: NF, vel: NoteVelocity) {
-        self.note = Some((NoteState::Playing, hz, freq, vel));
+        self.note = Some(Note {
+            state: NoteState::Playing,
+            hz: hz,
+            vel: vel,
+            freq: freq,
+            time_of_note_on: std::time::Instant::now(),
+        });
     }
 
     /// Release playback of the current not eif there is one.
     #[inline]
     pub fn note_off(&mut self) {
-        if let Some(&mut(ref mut state, _, _, _)) = self.note.as_mut() {
-            *state = NoteState::Released(0);
+        if let Some(ref mut note) = self.note {
+            note.state = NoteState::Released(0);
         }
     }
 
@@ -76,8 +98,8 @@ impl<NF> Voice<NF> {
         }
 
         let Voice { ref mut note, ref mut playhead } = *self;
-        match note.as_mut() {
-            Some(&mut(ref mut state, _, ref mut freq, vel)) => match *state {
+        match *note {
+            Some(Note { ref mut state, ref mut freq, vel, .. }) => match *state {
                 NoteState::Playing => {
                     let attack_amp = next_attack_amp(playhead, attack);
                     let vel = vel * attack_amp;

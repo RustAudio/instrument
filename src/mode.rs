@@ -1,6 +1,8 @@
 use note_freq::NoteFreqGenerator;
+use std;
 use unit::{NoteHz, NoteVelocity};
-use voice::{NoteState, Voice};
+use voice::{self, NoteState, Voice};
+
 
 /// The "mode" with which the `Instrument` will handle notes.
 ///
@@ -65,7 +67,7 @@ pub enum Dynamic {
 
 
 /// Does the given `hz` match the `target_hz`?
-fn does_hz_match(hz: NoteHz, target_hz: NoteHz) -> bool {
+pub fn does_hz_match(hz: NoteHz, target_hz: NoteHz) -> bool {
     const HZ_VARIANCE: NoteHz = 0.25;
     let (min_hz, max_hz) = (target_hz - HZ_VARIANCE, target_hz + HZ_VARIANCE);
     hz > min_hz && hz < max_hz
@@ -74,8 +76,8 @@ fn does_hz_match(hz: NoteHz, target_hz: NoteHz) -> bool {
 /// Is the given `voice` currently playing a note that matches the `target_hz`?
 fn does_voice_match<NF>(voice: &Voice<NF>, target_hz: NoteHz) -> bool {
     match voice.note {
-        Some((NoteState::Playing, voice_note_hz, _, _)) =>
-            does_hz_match(voice_note_hz, target_hz),
+        Some(voice::Note { state: NoteState::Playing, hz, .. }) =>
+            does_hz_match(hz, target_hz),
         _ => false,
     }
 }
@@ -127,7 +129,7 @@ impl Mode for Mono {
         let Mono(kind, ref mut notes) = *self;
 
         // If a note was already playing, move it onto the stack
-        if let Some((NoteState::Playing, hz, _, _)) = voices[0].note {
+        if let Some(voice::Note { state: NoteState::Playing, hz, .. }) = voices[0].note {
             notes.push(hz);
 
             // If in Retrigger mode, reset the playheads.
@@ -163,7 +165,7 @@ impl Mode for Mono {
         let Mono(kind, ref mut notes) = *self;
 
         if does_voice_match(&mut voices[0], note_hz) {
-            if let Some((_, _, _, vel)) = voices[0].note {
+            if let Some(voice::Note { vel, .. }) = voices[0].note {
                 // If there's a note still on the stack, fall back to it.
                 if let Some(old_hz) = notes.pop() {
 
@@ -214,12 +216,11 @@ impl Mode for Poly {
                     voices: &mut [Voice<NFG::NoteFreq>])
         where NFG: NoteFreqGenerator,
     {
-
         // Construct the new CurrentFreq for the new note.
         let freq = {
             // First, determine the current hz of the last note played if there is one.
             let mut active = voices.iter().filter(|voice| voice.note.is_some());
-            
+
             // Find the most recent voice.
             let maybe_newest_voice = active.next().map(|voice| {
                 active.fold(voice, |newest, voice| {
@@ -233,15 +234,16 @@ impl Mode for Poly {
 
         // Find the right voice to play the note.
         let mut oldest = None;
-        let mut max_sample_count: u64 = 0;
+        let mut oldest_note_on = std::time::Instant::now();
         for voice in voices.iter_mut() {
             if voice.note.is_none() {
                 voice.reset_playhead();
                 voice.note_on(note_hz, freq, note_vel);
                 return;
             }
-            else if voice.playhead >= max_sample_count {
-                max_sample_count = voice.playhead;
+            let time_of_note_on = voice.note.as_ref().unwrap().time_of_note_on;
+            if time_of_note_on < oldest_note_on {
+                oldest_note_on = time_of_note_on;
                 oldest = Some(voice);
             }
         }

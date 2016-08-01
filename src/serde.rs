@@ -763,253 +763,6 @@ mod mode {
     }
 }
 
-mod voice {
-
-    mod note_state {
-        use voice::NoteState;
-        use super::super::serde;
-
-        impl serde::Serialize for NoteState {
-            fn serialize<S>(&self, serializer: &mut S) -> Result<(), S::Error>
-                where S: serde::Serializer,
-            {
-                match *self {
-                    NoteState::Playing =>
-                        serializer.serialize_unit_variant("NoteState", 0, "Playing"),
-                    NoteState::Released(playhead) =>
-                        serializer.serialize_newtype_variant("NoteState", 1, "Released", playhead),
-                }
-            }
-        }
-
-        impl serde::Deserialize for NoteState {
-            fn deserialize<D>(deserializer: &mut D) -> Result<Self, D::Error>
-                where D: serde::Deserializer,
-            {
-                enum Variant {
-                    Playing,
-                    Released,
-                }
-
-                impl serde::de::Deserialize for Variant {
-                    fn deserialize<D>(deserializer: &mut D) -> Result<Variant, D::Error>
-                        where D: serde::Deserializer,
-                    {
-                        struct VariantVisitor;
-
-                        impl serde::de::Visitor for VariantVisitor {
-                            type Value = Variant;
-
-                            fn visit_str<E>(&mut self, value: &str) -> Result<Variant, E>
-                                where E: serde::de::Error,
-                            {
-                                match value {
-                                    "Playing" => Ok(Variant::Playing),
-                                    "Released" => Ok(Variant::Released),
-                                    _ => Err(serde::de::Error::unknown_field(value)),
-                                }
-                            }
-                        }
-
-                        deserializer.deserialize(VariantVisitor)
-                    }
-                }
-
-                struct Visitor;
-
-                impl serde::de::EnumVisitor for Visitor {
-                    type Value = NoteState;
-
-                    fn visit<V>(&mut self, mut visitor: V) -> Result<Self::Value, V::Error>
-                        where V: serde::de::VariantVisitor,
-                    {
-                        match try!(visitor.visit_variant()) {
-                            Variant::Playing => {
-                                try!(visitor.visit_unit());
-                                Ok(NoteState::Playing)
-                            },
-                            Variant::Released => {
-                                let playhead = try!(visitor.visit_newtype());
-                                Ok(NoteState::Released(playhead))
-                            },
-                        }
-                    }
-                }
-
-                const VARIANTS: &'static [&'static str] = &["Playing", "Released"];
-
-                deserializer.deserialize_enum("NoteState", VARIANTS, Visitor)
-            }
-        }
-
-        #[test]
-        fn test() {
-            extern crate serde_json;
-
-            let state = NoteState::Playing;
-            let serialized = serde_json::to_string(&state).unwrap();
-
-            println!("{}", serialized);
-            assert_eq!("{\"Playing\":[]}", serialized);
-            
-            let deserialized: NoteState = serde_json::from_str(&serialized).unwrap();
-
-            println!("{:?}", deserialized);
-            assert_eq!(state, deserialized);
-        }
-    }
-
-    mod voice {
-        use voice::Voice;
-        use super::super::serde;
-
-        impl<NF> serde::Serialize for Voice<NF>
-            where NF: serde::Serialize,
-        {
-            fn serialize<S>(&self, serializer: &mut S) -> Result<(), S::Error>
-                where S: serde::Serializer,
-            {
-                struct Visitor<'a, NF: 'a> {
-                    t: &'a Voice<NF>,
-                    field_idx: u8,
-                }
-
-                impl<'a, NF> serde::ser::MapVisitor for Visitor<'a, NF>
-                    where NF: serde::Serialize,
-                {
-                    fn visit<S>(&mut self, serializer: &mut S) -> Result<Option<()>, S::Error>
-                        where S: serde::Serializer,
-                    {
-                        match self.field_idx {
-                            0 => {
-                                self.field_idx += 1;
-                                Ok(Some(try!(serializer.serialize_struct_elt("note", &self.t.note))))
-                            },
-                            1 => {
-                                self.field_idx += 1;
-                                Ok(Some(try!(serializer.serialize_struct_elt("playhead", self.t.playhead))))
-                            },
-                            _ => Ok(None),
-                        }
-                    }
-
-                    fn len(&self) -> Option<usize> {
-                        Some(2)
-                    }
-                }
-
-                serializer.serialize_struct("Voice", Visitor { t: self, field_idx: 0 })
-            }
-        }
-
-        impl<NF> serde::Deserialize for Voice<NF>
-            where NF: serde::Deserialize,
-        {
-            fn deserialize<D>(deserializer: &mut D) -> Result<Self, D::Error>
-                where D: serde::Deserializer,
-            {
-                use std;
-
-                struct Visitor<NF> { note_freq: std::marker::PhantomData<NF> };
-
-                impl<NF> serde::de::Visitor for Visitor<NF>
-                    where NF: serde::Deserialize,
-                {
-                    type Value = Voice<NF>;
-
-                    fn visit_map<V>(&mut self, mut visitor: V) -> Result<Voice<NF>, V::Error>
-                        where V: serde::de::MapVisitor,
-                    {
-                        let mut note = None;
-                        let mut playhead = None;
-
-                        enum Field {
-                            Note,
-                            Playhead,
-                        }
-
-                        impl serde::Deserialize for Field {
-                            fn deserialize<D>(deserializer: &mut D) -> Result<Field, D::Error>
-                                where D: serde::de::Deserializer,
-                            {
-                                struct FieldVisitor;
-
-                                impl serde::de::Visitor for FieldVisitor {
-                                    type Value = Field;
-
-                                    fn visit_str<E>(&mut self, value: &str) -> Result<Field, E>
-                                        where E: serde::de::Error,
-                                    {
-                                        match value {
-                                            "note" => Ok(Field::Note),
-                                            "playhead" => Ok(Field::Playhead),
-                                            _ => Err(serde::de::Error::custom("expected note or playhead")),
-                                        }
-                                    }
-                                }
-
-                                deserializer.deserialize(FieldVisitor)
-                            }
-                        }
-
-                        loop {
-                            match try!(visitor.visit_key()) {
-                                Some(Field::Note) => { note = Some(try!(visitor.visit_value())); },
-                                Some(Field::Playhead) => { playhead = Some(try!(visitor.visit_value())); },
-                                None => { break; }
-                            }
-                        }
-
-                        let note = match note {
-                            Some(note) => note,
-                            None => return Err(serde::de::Error::missing_field("note")),
-                        };
-
-                        let playhead = match playhead {
-                            Some(playhead) => playhead,
-                            None => return Err(serde::de::Error::missing_field("playhead")),
-                        };
-
-                        try!(visitor.end());
-
-                        Ok(Voice {
-                            note: note,
-                            playhead: playhead,
-                        })
-                    }
-                }
-
-                static FIELDS: &'static [&'static str] = &[
-                    "note",
-                    "playhead",
-                ];
-
-                let visitor = Visitor { note_freq: std::marker::PhantomData };
-                deserializer.deserialize_struct("Voice", FIELDS, visitor)
-            }
-        }
-
-        #[test]
-        fn test() {
-            extern crate serde_json;
-
-            let voice = Voice {
-                note: None,
-                playhead: 10_000,
-            };
-            let serialized = serde_json::to_string(&voice).unwrap();
-
-            println!("{}", serialized);
-            assert_eq!("{\"note\":null,\"playhead\":10000}", serialized);
-            
-            let deserialized: Voice<()> = serde_json::from_str(&serialized).unwrap();
-
-            println!("{:?}", deserialized);
-            assert_eq!(voice, deserialized);
-        }
-    }
-}
-
 mod instrument {
     use instrument::Instrument;
     use note_freq::NoteFreqGenerator;
@@ -1045,7 +798,7 @@ mod instrument {
                         },
                         1 => {
                             self.field_idx += 1;
-                            Ok(Some(try!(serializer.serialize_struct_elt("voices", &self.t.voices))))
+                            Ok(Some(try!(serializer.serialize_struct_elt("voices", self.t.voices.len()))))
                         },
                         2 => {
                             self.field_idx += 1;
@@ -1101,6 +854,8 @@ mod instrument {
                 fn visit_map<V>(&mut self, mut visitor: V) -> Result<Instrument<M, NFG>, V::Error>
                     where V: serde::de::MapVisitor,
                 {
+                    use voice;
+
                     let mut mode = None;
                     let mut voices = None;
                     let mut detune = None;
@@ -1192,7 +947,7 @@ mod instrument {
 
                     Ok(Instrument {
                         mode: mode,
-                        voices: voices,
+                        voices: vec![voice::Voice { note: None, playhead: 0 }; voices],
                         detune: detune,
                         note_freq_gen: note_freq_gen,
                         attack_ms: attack_ms,
@@ -1234,7 +989,7 @@ mod instrument {
         let serialized = serde_json::to_string(&instrument).unwrap();
 
         println!("{}", serialized);
-        assert_eq!("{\"mode\":null,\"voices\":[],\"detune\":0.25,\"note_freq_gen\":null,\"attack_ms\":10,\"release_ms\":100}", serialized);
+        assert_eq!("{\"mode\":null,\"voices\":0,\"detune\":0.25,\"note_freq_gen\":null,\"attack_ms\":10,\"release_ms\":100}", serialized);
         
         let deserialized: Instrument<Poly, ()> = serde_json::from_str(&serialized).unwrap();
 
